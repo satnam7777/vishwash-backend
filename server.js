@@ -2,42 +2,58 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
-const cookieParser = require("cookie-parser");
-const dashboardRoutes = require('./routes/dashboard');
+const cookieParser = require('cookie-parser');
 
+// Routes
+const authRoutes = require('./routes/auth');
+const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 app.use(cookieParser());
+app.use(express.json());
 
-// Global middleware first
+// ----------------------------
+// ✅ CORS Setup
+// ----------------------------
+const allowedOrigins = [
+  'http://localhost:3000',                 // Local dev
+  'https://vishwash-frontend.vercel.app'  // Vercel frontend
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://stockmarket-seven.vercel.app/'], // Your Next.js frontend URL
+  origin: function(origin, callback) {
+    // allow requests with no origin (like Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
 
-// Routes
-app.use('/api/auth', authRoutes); // includes /login, /register, /me, /logout
+// ----------------------------
+// ✅ Routes
+// ----------------------------
+app.use('/api/auth', authRoutes);         // /api/auth/login, /api/auth/register, etc.
+app.use('/api/dashboard', dashboardRoutes);
 
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
-
-
-app.use('/api/dashboard', dashboardRoutes);
-
-
-// MongoDB Connection
+// ----------------------------
+// ✅ MongoDB Connection
+// ----------------------------
 mongoose
   .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/admin-dashboard')
   .then(() => {
     console.log('✅ MongoDB connected successfully');
-    
+
     // Start server
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
@@ -50,8 +66,10 @@ mongoose
     process.exit(1);
   });
 
-// Error handling middleware
+// ----------------------------
+// ✅ Global Error Handler
+// ----------------------------
 app.use((err, req, res, next) => {
-  console.error('❌ Server error:', err);
-  res.status(500).json({ message: 'Internal server error' });
+  console.error('❌ Server error:', err.message || err);
+  res.status(500).json({ message: err.message || 'Internal server error' });
 });
