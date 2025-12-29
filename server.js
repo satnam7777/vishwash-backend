@@ -16,24 +16,31 @@ app.use(express.json());
 // ✅ CORS Setup
 // ----------------------------
 const allowedOrigins = [
-  'http://localhost:3000',                 // Local dev
-  'https://vishwash-frontend.vercel.app'  // Vercel frontend
+  'http://localhost:3000',
+  'https://vishwash-frontend.vercel.app',
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // allow requests with no origin (like Postman)
+  origin: function (origin, callback) {
+    // allow non-browser requests
     if (!origin) return callback(null, true);
+
+    // allow localhost & prod
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+      return callback(null, true);
     }
+
+    // allow ALL Vercel preview deployments
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // DO NOT THROW ERROR (very important)
+    return callback(null, false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.options('*', cors());
 
 // ----------------------------
